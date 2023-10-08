@@ -1,3 +1,6 @@
+import { Middleware } from './index'
+import { OpsAction } from '../useAsyncOp'
+
 const CSS_HEADER = 'color: #777;'
 const CSS_NAME = 'color: #000; font-weight: bold;'
 const CSS_OPTIONS = 'color: #555;'
@@ -6,13 +9,23 @@ const CSS_EVENT_COMPLETE = 'color: #272;'
 const CSS_EVENT_ERROR = 'color: #c22;'
 const CSS_EVENT_START = 'color: #22c;'
 
-const log = ({ id, event, name, args, options, error, result }) => {
-  let s = ''
-  const logParams = []
+interface LogProps {
+  id: string | number
+  event: OpsAction['type']
+  name: string
+  args: unknown[]
+  options: unknown
+  error?: Error | string
+  result?: unknown
+}
 
-  const append = (css, type, value) => {
+const log = ({ id, event, name, args, options, error, result }: LogProps): void => {
+  let s = ''
+  const logParams: any[] = []
+
+  const append = (css: string | null, type: string, value: any): void => {
     s += ''
-    if (css) {
+    if (css != null) {
       s += '%c'
       logParams.push(css)
     }
@@ -36,13 +49,13 @@ const log = ({ id, event, name, args, options, error, result }) => {
 
   append(CSS_ARGS, '%o', args)
 
-  if (error) append(null, '%o', error)
-  if (result) append(null, '%o', result)
+  if (event === 'ERROR') append(null, '%o', error)
+  if (result != null && result !== '') append(null, '%o', result)
 
   console.log(s, ...logParams)
 }
 
-export default next => async (context, response, error) => {
+const logging: Middleware = next => async (context, response, error) => {
   const { name, args, options, runId: id } = context
   log({ id, event: 'START', name, args, options })
   try {
@@ -50,7 +63,9 @@ export default next => async (context, response, error) => {
     log({ id, event: 'COMPLETE', name, args, options, result: r })
     return r
   } catch (e) {
-    log({ id, event: 'ERROR', name, args, options, error: e })
+    log({ id, event: 'ERROR', name, args, options, error: e as any })
     throw e
   }
 }
+
+export default logging
